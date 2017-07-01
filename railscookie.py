@@ -14,7 +14,7 @@ class MessageVerifier(object):
     def generate(self, value: bytes) -> bytes:
         data = self._encode(value)
         digest = hmac.new(self.secret, msg=data, digestmod="sha1").hexdigest()
-        return b"--".join([data, digest])
+        return b"--".join([data, self._encode(digest)])
 
     def _encode(self, data: bytes) -> bytes:
         return base64.b64encode(data)
