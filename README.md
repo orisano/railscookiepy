@@ -13,3 +13,6 @@ cookie = cookiejar.loads(b"<<RAILS_ENCODED_COOKIE>>")
 cookie["id"] += 1
 print(cookiejar.dumps(cookie).decode())
 ```
+
+## License
+MIT
