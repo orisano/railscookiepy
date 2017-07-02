@@ -1,1 +1,1 @@
-PyCrypto
+git+https://github.com/dlitz/pycrypto
