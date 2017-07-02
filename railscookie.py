@@ -1,10 +1,16 @@
 from Crypto.Cipher import AES
 from Crypto import Random
+from Crypto.Util.Padding import pad, unpad
 
 import base64
 import hashlib
 import hmac
+import json
 from typing import Optional
+
+
+class InvalidSignature(Exception):
+    pass
 
 
 class MessageVerifier(object):
@@ -13,26 +19,57 @@ class MessageVerifier(object):
 
     def generate(self, value: bytes) -> bytes:
         data = self._encode(value)
-        digest = hmac.new(self.secret, msg=data, digestmod="sha1").hexdigest()
-        return b"--".join([data, self._encode(digest)])
+        digest = self._generate_digest(data)
+        return b"--".join([data, digest])
+
+    def is_valid_message(self, signed_message: bytes) -> bool:
+        data, digest = signed_message.split(b"--")
+        return self._generate_digest(data) == digest
+
+    def verified(self, signed_message: bytes) -> Optional[bytes]:
+        if not self.is_valid_message(signed_message):
+            return None
+        data, _ = signed_message.split(b"--")
+        return self._decode(data)
+
+    def verify(self, signed_message: bytes) -> bytes:
+        verified = self.verified(signed_message)
+        if verified is None:
+            raise InvalidSignature()
+        return verified
+
+    def _generate_digest(self, data: bytes) -> bytes:
+        return hmac.new(self.secret, msg=data, digestmod="sha1").hexdigest().encode()
 
     @staticmethod
     def _encode(data: bytes) -> bytes:
         return base64.b64encode(data)
+
+    @staticmethod
+    def _decode(data: bytes) -> bytes:
+        return base64.b64decode(data)
 
 
 class MessageEncryptor(object):
     def __init__(self, secret: bytes, sign_secret: bytes):
         self.secret = secret
         self.sign_secret = sign_secret
-        self.verifier = MessageVerifier(secret)
+        self.verifier = MessageVerifier(sign_secret)
 
     def encrypt_and_sign(self, value: bytes) -> bytes:
         return self.verifier.generate(self._encrypt(value))
 
+    def decrypt_and_verify(self, value: bytes) -> bytes:
+        return unpad(self._decrypt(self.verifier.verify(value)), 16)
+
     def _encrypt(self, value: bytes) -> bytes:
         cipher = self._new_cipher(self.secret)
-        return b"--".join(map(base64.b64encode, [cipher.encrypt(value), cipher.IV]))
+        return b"--".join(map(base64.b64encode, [cipher.encrypt(pad(value, 16)), cipher.IV]))
+
+    def _decrypt(self, encrypted_message: bytes) -> bytes:
+        encrypted_data, iv = map(base64.b64decode, encrypted_message.split(b"--"))
+        cipher = self._new_cipher(self.secret, iv=iv)
+        return cipher.decrypt(encrypted_data)
 
     @staticmethod
     def _new_cipher(key: bytes, iv: Optional[bytes]=None) -> AES.AESCipher:
@@ -51,5 +88,8 @@ class RailsCookie(object):
     def _generate_key(secret: bytes, salt: bytes) -> bytes:
         return hashlib.pbkdf2_hmac("sha1", secret, salt, 1000, dklen=64)
 
-    def loads(self, cookie: bytes) -> dict:
-        pass
+    def loads(self, encoded_cookie: bytes) -> dict:
+        return json.loads(self.encryptor.decrypt_and_verify(encoded_cookie).decode())
+
+    def dumps(self, cookie: dict) -> bytes:
+        return self.encryptor.encrypt_and_sign(json.dumps(cookie).encode())
