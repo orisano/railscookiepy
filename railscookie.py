@@ -1,12 +1,26 @@
 from Crypto.Cipher import AES
 from Crypto import Random
-from Crypto.Util.Padding import pad, unpad
 
 import base64
 import hashlib
 import hmac
 import json
 from typing import Optional
+
+
+def pad(data: bytes, block_size: int) -> bytes:
+    padding_len = block_size - len(data) % block_size
+    return data + bytes([padding_len] * padding_len)
+
+
+def unpad(data: bytes, block_size: int) -> bytes:
+    padded_len = len(data)
+    assert padded_len % block_size == 0
+
+    padding_len = ord(data[-1])
+    assert 0 < padding_len < block_size
+    assert data[-padding_len:] == bytes([padding_len] * padding_len)
+    return data[:-padding_len]
 
 
 class InvalidSignature(Exception):
