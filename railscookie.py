@@ -38,7 +38,7 @@ def unpad(data: bytes, block_size: int) -> bytes:
     padded_len = len(data)
     assert padded_len % block_size == 0
 
-    padding_len = ord(data[-1])
+    padding_len = data[-1]
     assert 0 < padding_len < block_size
     assert data[-padding_len:] == bytes([padding_len] * padding_len)
     return data[:-padding_len]
