@@ -14,5 +14,8 @@ cookie["id"] += 1
 print(cookiejar.dumps(cookie).decode())
 ```
 
+## Author
+Nao YONASHIRO (@orisano)
+
 ## License
 MIT
