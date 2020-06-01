@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name="railscookie",
     version="1.0.0",
-    author="orisano",
+    author="Nao Yonashiro",
     author_email="owan.oriasno@gmail.com",
     description="Rails4 Cookie Manipulator for Python3",
     license="MIT",
